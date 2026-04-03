@@ -94,9 +94,12 @@ export default function DiscoverArticlesPage() {
                       <Text style={styles.authorRole}>{item.role}</Text>
                     </View>
                   </View>
-                  <TouchableOpacity style={styles.readBtn}>
+                  <TouchableOpacity 
+                    style={styles.readBtn} 
+                    onPress={() => router.push('/article_detail')}
+                >
                     <Text style={styles.readText}>Read →</Text>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
                 </View>
               </View>
             </View>
