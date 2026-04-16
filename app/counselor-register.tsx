@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
@@ -84,7 +84,7 @@ export default function CounselorRegisterScreen() {
       });
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/counselor-profile');
+      router.replace('/(counselor-tabs)/profile');
     } catch (error) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
@@ -110,6 +110,11 @@ export default function CounselorRegisterScreen() {
     router.push('/counselor-login');
   };
 
+  const handleGooglePress = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert('Google Sign Up', 'Google account sign up will be available here soon.');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -118,13 +123,18 @@ export default function CounselorRegisterScreen() {
         <Text style={styles.roleText}>I am a counselor</Text>
 
         <View style={styles.formPanel}>
-          <View pointerEvents="none" style={styles.bottomArc} />
           <ScrollView
             contentContainerStyle={styles.formContent}
             showsVerticalScrollIndicator={false}
             bounces={false}>
             <View style={styles.iconTile}>
               <MaterialCommunityIcons name="stethoscope" size={43} color="#FFFFFF" />
+            </View>
+
+            <View style={styles.dividerWrap}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>sign up with email</Text>
+              <View style={styles.dividerLine} />
             </View>
 
             <Text style={styles.label}>Mr/ Mrs/ Ms</Text>
@@ -215,6 +225,19 @@ export default function CounselorRegisterScreen() {
               By Signing up you agree to our Terms and Service and Privacy Policy.We ensure your data is encrypted and
               secure
             </Text>
+
+            <View style={styles.bottomSocialWrap}>
+              <View style={styles.bottomDividerWrap}>
+                <View style={styles.bottomDividerLine} />
+                <Text style={styles.bottomDividerText}>Or</Text>
+                <View style={styles.bottomDividerLine} />
+              </View>
+
+              <TouchableOpacity style={styles.socialButton} activeOpacity={0.85} onPress={handleGooglePress}>
+                <Ionicons name="logo-google" size={24} color="#000000" />
+                <Text style={styles.socialText}>Continue with Google</Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -287,6 +310,25 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 12,
   },
+  dividerWrap: {
+    marginTop: 16,
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D6DCE6',
+  },
+  dividerText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#697386',
+    fontWeight: '600',
+  },
   label: {
     marginTop: 8,
     marginBottom: 4,
@@ -349,7 +391,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   termsText: {
-    marginTop: 0,
+    marginTop: 4,
     textAlign: 'center',
     fontFamily: 'Inter',
     fontSize: 10,
@@ -358,16 +400,43 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     paddingHorizontal: 8,
   },
-  bottomArc: {
-    position: 'absolute',
-    width: 400,
-    height: 290,
-    backgroundColor: '#2F88E8',
-    left: -70,
-    bottom: -230,
-    borderTopLeftRadius: 5000,
-    borderTopRightRadius: 1400,
-    opacity: 0.96,
-    zIndex: 0,
+  bottomSocialWrap: {
+    marginTop: 24,
+  },
+  bottomDividerWrap: {
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bottomDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#B4BBC7',
+  },
+  bottomDividerText: {
+    fontFamily: 'Inter',
+    fontSize: 18,
+    lineHeight: 15,
+    color: '#4F5971',
+    fontWeight: '500',
+  },
+  socialButton: {
+    height: 45,
+    borderRadius: 31,
+    borderWidth: 1,
+    borderColor: '#B3BAC7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: '#F7F8FA',
+  },
+  socialText: {
+    fontFamily: 'Inter',
+    color: '#111111',
+    fontSize: 15,
+    lineHeight: 23,
+    fontWeight: '500',
   },
 });

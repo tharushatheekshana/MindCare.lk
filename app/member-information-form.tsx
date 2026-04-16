@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,7 +37,6 @@ export default function CounselorRegisterScreen() {
         <Text style={styles.subtitle}>Tell us a bit about yourself so we can personalize your experience</Text>
 
         <View style={styles.formPanel}>
-          <View pointerEvents="none" style={styles.bottomArc} />
           <ScrollView
             contentContainerStyle={styles.formContent}
             showsVerticalScrollIndicator={false}
@@ -250,17 +249,5 @@ picker: {
     color: '#7E7E7E',
     fontWeight: '500',
     paddingHorizontal: 8,
-  },
-  bottomArc: {
-    position: 'absolute',
-    width: 430,
-    height: 320,
-    backgroundColor: '#2F88E8',
-    left: -70,
-    bottom: -230,
-    borderTopLeftRadius: 5400,
-    borderTopRightRadius: 2100,
-    opacity: 0.96,
-    zIndex: 0,
   },
 });

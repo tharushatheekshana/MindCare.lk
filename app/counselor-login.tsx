@@ -37,7 +37,7 @@ export default function LoginScreen() {
       const profile = await signInCounselor(emailAddress.trim().toLowerCase(), password);
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace(profile.profileCompleted ? '/counselor-dashboard' : '/counselor-profile');
+      router.replace(profile.profileCompleted ? '/(counselor-tabs)/overview' : '/(counselor-tabs)/profile');
     } catch (error) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
@@ -134,11 +134,6 @@ export default function LoginScreen() {
           </View>
 
           <TouchableOpacity style={styles.socialButton} activeOpacity={0.85} onPress={handleSocialPress}>
-            <Ionicons name="logo-apple" size={26} color="#000000" />
-            <Text style={styles.socialText}>Continue with Apple</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialButton} activeOpacity={0.85} onPress={handleSocialPress}>
             <Ionicons name="logo-google" size={24} color="#000000" />
             <Text style={styles.socialText}>Continue with Google</Text>
           </TouchableOpacity>
@@ -150,8 +145,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        <View pointerEvents="none" style={styles.bottomArc} />
       </View>
     </SafeAreaView>
   );
@@ -328,15 +321,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 21,
     fontWeight: '500',
-  },
-  bottomArc: {
-    position: 'absolute',
-    width: 520,
-    height: 235,
-    borderRadius: 260,
-    backgroundColor: '#2F88E8',
-    left: -40,
-    bottom: -140,
-    opacity: 0.96,
   },
 });

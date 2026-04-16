@@ -70,17 +70,6 @@ const splitDisplayName = (
   return { salutation: parsedSalutation, name: parsedName };
 };
 
-const buildDisplayName = (
-  selectedSalutation: string,
-  rawName: string,
-): string => {
-  const parsed = splitDisplayName(rawName);
-  const finalName = parsed.name.trim();
-  const finalSalutation =
-    normalizeSalutation(selectedSalutation) || parsed.salutation || "Mr";
-  return finalName ? `${finalSalutation} ${finalName}` : finalSalutation;
-};
-
 const deriveNameFromEmail = (email: string) => {
   const localPart = email.split("@")[0] ?? "";
   if (!localPart) return "";
@@ -319,7 +308,7 @@ export default function CounselorProfileScreen() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       if (navigateToDashboard) {
-        router.replace("/counselor-dashboard");
+        router.replace("/(counselor-tabs)/overview");
         return;
       }
 
@@ -672,39 +661,6 @@ export default function CounselorProfileScreen() {
             <Text style={styles.discardText}>Discard Changes</Text>
           </TouchableOpacity>
         </ScrollView>
-
-        <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={styles.navItem}
-            activeOpacity={0.85}
-            onPress={() => router.replace("/counselor-dashboard")}
-          >
-            <Feather name="grid" size={24} color="#7F8695" />
-            <Text style={styles.navText}>Overview</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            activeOpacity={0.85}
-            onPress={() =>
-              router.replace({
-                pathname: "/counselor-schedule",
-                params: {
-                  name: buildDisplayName(salutation, fullName),
-                  specialty,
-                },
-              })
-            }
-          >
-            <Feather name="calendar" size={24} color="#7F8695" />
-            <Text style={styles.navText}>Schedule</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItem} activeOpacity={0.85}>
-            <Feather name="user" size={24} color="#2F88E8" />
-            <Text style={styles.navActive}>My Profile</Text>
-          </TouchableOpacity>
-        </View>
 
         <Modal
           visible={showSalutations}
@@ -1169,37 +1125,5 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: "#E34B4B",
     fontWeight: "500",
-  },
-  bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 74,
-    borderTopWidth: 1,
-    borderTopColor: "#D4DAE5",
-    backgroundColor: "#F5F8FC",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 18,
-  },
-  navItem: {
-    alignItems: "center",
-    gap: 6,
-  },
-  navText: {
-    fontFamily: "Inter",
-    fontSize: 11,
-    lineHeight: 14,
-    color: "#737C8C",
-    fontWeight: "600",
-  },
-  navActive: {
-    fontFamily: "Inter",
-    fontSize: 11,
-    lineHeight: 14,
-    color: "#2F88E8",
-    fontWeight: "700",
   },
 });

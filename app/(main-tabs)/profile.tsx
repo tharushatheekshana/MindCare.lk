@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { addCounselorNotification } from '@/components/notification-store';
 import { RescheduleModal, type RescheduleSession } from '@/components/RescheduleModal';
 import { removeBookedSession, updateBookedSession, useBookedSessions } from '@/components/session-store';
 
@@ -183,7 +184,13 @@ export default function ProfilePage() {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => router.replace('/(tabs)'),
+        onPress: () => {
+          if ('dismissAll' in router && typeof router.dismissAll === 'function') {
+            router.dismissAll();
+          }
+
+          router.replace('/(tabs)');
+        },
       },
     ]);
   };
@@ -203,12 +210,23 @@ export default function ProfilePage() {
       return;
     }
 
+    const updatedDate = formatSessionDate(selectedRescheduleDate);
+    const updatedTime = buildSessionRange(selectedTimeSlot);
+
     updateBookedSession(rescheduleSession.id, {
-      date: formatSessionDate(selectedRescheduleDate),
-      time: buildSessionRange(selectedTimeSlot),
+      date: updatedDate,
+      time: updatedTime,
       status: 'Upcoming',
       actions: true,
     });
+
+    addCounselorNotification({
+      counselorName: rescheduleSession.doctor,
+      type: 'reschedule',
+      title: 'Session rescheduled',
+      message: `A patient moved their session to ${updatedDate} at ${updatedTime}.`,
+    });
+
     setRescheduleSession(null);
   };
 

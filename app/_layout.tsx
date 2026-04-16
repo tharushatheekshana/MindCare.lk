@@ -21,6 +21,7 @@ export default function RootLayout() {
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="(main-tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(counselor-tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="member-login" options={{ headerShown: false }} />
           <Stack.Screen name="counselor-login" options={{ headerShown: false }} />
         <Stack.Screen name="articles" options={{ headerShown: false }} />
@@ -34,18 +35,6 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="member-information-form"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="counselor-profile"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="counselor-dashboard"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="counselor-schedule"
           options={{ headerShown: false }}
         />
         <Stack.Screen name="call-selection" options={{ headerShown: false }} />
