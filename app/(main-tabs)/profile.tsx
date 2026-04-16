@@ -3,9 +3,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthContext } from '@/components/AuthContext';
 import { addCounselorNotification } from '@/components/notification-store';
 import { RescheduleModal, type RescheduleSession } from '@/components/RescheduleModal';
 import { removeBookedSession, updateBookedSession, useBookedSessions } from '@/components/session-store';
+import { getMemberProfile } from '@/lib/members';
 
 type ProfileForm = {
   name: string;
@@ -22,6 +24,15 @@ type InfoField = {
 };
 
 type SessionCard = RescheduleSession;
+
+function deriveNameFromEmail(email: string) {
+  return (email.split('@')[0] ?? '')
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(' ');
+}
 
 function buildSessionRange(start: string) {
   const [time, meridiem] = start.split(' ');
@@ -127,8 +138,9 @@ function SectionHeader({
 }
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState(initialProfile);
-  const [draftProfile, setDraftProfile] = useState(initialProfile);
+  const { currentUser, memberProfile, setMemberProfile } = useAuthContext();
+  const [profile, setProfile] = useState(memberProfile);
+  const [draftProfile, setDraftProfile] = useState(memberProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [rescheduleSession, setRescheduleSession] = useState<SessionCard | null>(null);
   const [selectedRescheduleDate, setSelectedRescheduleDate] = useState('2026-03-11');
@@ -137,28 +149,92 @@ export default function ProfilePage() {
   const [detailsSectionY, setDetailsSectionY] = useState(0);
   const bookedSessions = useBookedSessions();
   const [isInfoFilled, setIsInfoFilled] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   const upcomingCount = bookedSessions.filter((session) => session.status === 'Upcoming').length;
 
   const params = useLocalSearchParams<{ filledName?: string; filledEmail?: string; filledGender?: string; filledDob?: string }>();
 
   useEffect(() => {
-    if (params.filledName) {
-      const filled = {
-        name: params.filledName ?? profile.name,
-        email: params.filledEmail ?? profile.email,
-        gender: params.filledGender ?? profile.gender,
-        dob: params.filledDob ?? profile.dob,
-      };
-      setProfile(filled);
-      setDraftProfile(filled);
-      setIsInfoFilled(true);
+    const nextProfile = {
+      name: params.filledName ?? memberProfile.name,
+      email: params.filledEmail ?? memberProfile.email,
+      gender: params.filledGender ?? memberProfile.gender,
+      dob: params.filledDob ?? memberProfile.dob,
+    };
+
+    if (nextProfile.name || nextProfile.email || nextProfile.gender || nextProfile.dob) {
+      setMemberProfile(nextProfile);
     }
-  }, [params.filledName]);
+  }, [memberProfile.dob, memberProfile.email, memberProfile.gender, params.filledDob, params.filledEmail, params.filledGender, params.filledName, setMemberProfile]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setProfile(memberProfile);
+      setDraftProfile(memberProfile);
+      setIsInfoFilled(Boolean(memberProfile.name || memberProfile.email || memberProfile.gender || memberProfile.dob));
+      setIsLoadingProfile(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    void (async () => {
+      try {
+        const savedProfile = await getMemberProfile(currentUser.uid);
+        const nextProfile = savedProfile
+          ? {
+              name: savedProfile.name,
+              email: savedProfile.email,
+              gender: savedProfile.gender,
+              dob: savedProfile.dob,
+            }
+          : {
+              name: currentUser.displayName || deriveNameFromEmail(currentUser.email ?? ''),
+              email: currentUser.email || '',
+              gender: '',
+              dob: '',
+            };
+
+        if (!isMounted) {
+          return;
+        }
+
+        setMemberProfile(nextProfile);
+        setProfile(nextProfile);
+        setDraftProfile(nextProfile);
+        setIsInfoFilled(Boolean(nextProfile.name || nextProfile.email || nextProfile.gender || nextProfile.dob));
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        const fallbackProfile = {
+          name: currentUser.displayName || deriveNameFromEmail(currentUser.email ?? ''),
+          email: currentUser.email || '',
+          gender: '',
+          dob: '',
+        };
+
+        setProfile(fallbackProfile);
+        setDraftProfile(fallbackProfile);
+        setIsInfoFilled(Boolean(fallbackProfile.name || fallbackProfile.email));
+      } finally {
+        if (isMounted) {
+          setIsLoadingProfile(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, memberProfile, setMemberProfile]);
 
   const handleEditPress = () => {
     if (isEditing) {
       setProfile(draftProfile);
+      setMemberProfile(draftProfile);
       setIsEditing(false);
       return;
     }
@@ -259,8 +335,10 @@ export default function ProfilePage() {
             </View>
 
             <View style={styles.profileSummaryCard}>
-              <Text style={styles.profileName}>{profile.name}</Text>
-              <Text style={styles.profileEmail}>{profile.email}</Text>
+              <Text style={styles.profileName}>
+                {isLoadingProfile ? 'Loading profile...' : profile.name || 'Your name will appear here'}
+              </Text>
+              <Text style={styles.profileEmail}>{profile.email || 'Email not added yet'}</Text>
               <View style={styles.profileBadgeRow}>
                 <View style={styles.profileBadge}>
                   <Feather name="shield" size={12} color="#2F88E8" />
@@ -282,7 +360,7 @@ export default function ProfilePage() {
                   key={field.id}
                   field={field}
                   isEditing={isEditing}
-                  value={isEditing ? draftProfile[field.id] : profile[field.id]}
+                  value={isEditing ? draftProfile[field.id] : profile[field.id] || `Add ${field.label.toLowerCase()}`}
                   onChange={(value) => setDraftProfile((current) => ({ ...current, [field.id]: value }))}
                 />
               ))}

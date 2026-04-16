@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { createMemberAccount } from '@/lib/members';
 
 export default function MemberRegisterScreen() {
   const [emailAddress, setEmailAddress] = useState('');
@@ -12,7 +13,7 @@ export default function MemberRegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     const trimmedEmail = emailAddress.trim();
 
     if (!trimmedEmail || !password || !confirmPassword) {
@@ -39,13 +40,23 @@ export default function MemberRegisterScreen() {
       return;
     }
 
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.replace({
-      pathname: '/member-information-form',
-      params: {
-        email: trimmedEmail,
-      },
-    });
+    try {
+      await createMemberAccount(trimmedEmail, password);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      router.replace({
+        pathname: '/member-information-form',
+        params: {
+          email: trimmedEmail,
+        },
+      });
+    } catch (error) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        'Sign Up Failed',
+        error instanceof Error && error.message ? error.message : 'Unable to create your account right now.'
+      );
+    }
   };
 
   const handleSignIn = () => {

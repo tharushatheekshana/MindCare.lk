@@ -1,13 +1,18 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useAuthContext } from '@/components/AuthContext';
+import { upsertMemberProfile } from '@/lib/members';
 
 
 export default function CounselorRegisterScreen() {
+  const params = useLocalSearchParams<{ email?: string }>();
+  const { currentUser, setMemberProfile } = useAuthContext();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
@@ -15,16 +20,43 @@ export default function CounselorRegisterScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleSave = () => {
-  router.replace({
-    pathname: '/(main-tabs)/profile',
-    params: {
-      filledName: `${firstName} ${lastName}`.trim(),
-      filledEmail: '',
-      filledGender: gender,
-      filledDob: dob ? formatDob(dob) : '',
-    },
-  });
-};
+    const filledProfile = {
+      name: `${firstName} ${lastName}`.trim(),
+      email: params.email ?? currentUser?.email ?? '',
+      gender,
+      dob: dob ? formatDob(dob) : '',
+    };
+
+    if (!currentUser) {
+      Alert.alert('Sign In Required', 'Please sign in again before saving your profile details.');
+      return;
+    }
+
+    void (async () => {
+      await upsertMemberProfile(currentUser.uid, filledProfile.email, {
+        name: filledProfile.name,
+        gender: filledProfile.gender,
+        dob: filledProfile.dob,
+      });
+
+      setMemberProfile(filledProfile);
+
+      router.replace({
+        pathname: '/(main-tabs)/profile',
+        params: {
+          filledName: filledProfile.name,
+          filledEmail: filledProfile.email,
+          filledGender: filledProfile.gender,
+          filledDob: filledProfile.dob,
+        },
+      });
+    })().catch((error) => {
+      Alert.alert(
+        'Save Failed',
+        error instanceof Error && error.message ? error.message : 'Unable to save your profile right now.'
+      );
+    });
+  };
 
   const formatDob = (date: Date) =>
   date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });

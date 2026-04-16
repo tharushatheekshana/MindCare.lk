@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -10,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { signInMember } from '@/lib/members';
 
 export default function LoginScreen() {
   const [emailAddress, setEmailAddress] = useState("");
@@ -23,23 +25,23 @@ export default function LoginScreen() {
     router.back();
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (!canSignIn) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
-    const derivedName = (emailAddress.trim().split("@")[0] ?? "")
-      .replace(/[._-]+/g, " ")
-      .split(" ")
-      .filter(Boolean)
-      .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
-      .join(" ");
-
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.replace({
-      pathname: "/home",
-    });
+    try {
+      await signInMember(emailAddress.trim().toLowerCase(), password);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace('/(main-tabs)/profile');
+    } catch (error) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        'Sign In Failed',
+        error instanceof Error && error.message ? error.message : 'Unable to sign in right now.'
+      );
+    }
   };
 
   const handleSocialPress = () => {
@@ -122,7 +124,7 @@ export default function LoginScreen() {
               !canSignIn && styles.signInButtonDisabled,
             ]}
             activeOpacity={0.9}
-            onPress={handleSignIn}
+            onPress={() => void handleSignIn()}
             disabled={!canSignIn}
           >
             <Text style={styles.signInText}>Sign In</Text>
