@@ -1,7 +1,20 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 
-import { auth, db, getFirebaseConfigError } from '@/lib/firebase';
+import { auth, db, getFirebaseConfigError } from "@/lib/firebase";
 
 export type CounselorProfile = {
   uid: string;
@@ -13,7 +26,7 @@ export type CounselorProfile = {
   qualifications: string[];
   researchStudies: string[];
   bio: string;
-  role: 'counselor';
+  role: "counselor";
   profileCompleted: boolean;
   createdAt?: unknown;
   updatedAt?: unknown;
@@ -37,18 +50,18 @@ type CounselorProfileUpdateInput = {
 
 const counselorCollection = () => {
   if (!db) {
-    throw new Error(getFirebaseConfigError() ?? 'Firestore is unavailable.');
+    throw new Error(getFirebaseConfigError() ?? "Firestore is unavailable.");
   }
 
-  return collection(db, 'counselors');
+  return collection(db, "counselors");
 };
 
 const counselorDocRef = (uid: string) => {
   if (!db) {
-    throw new Error(getFirebaseConfigError() ?? 'Firestore is unavailable.');
+    throw new Error(getFirebaseConfigError() ?? "Firestore is unavailable.");
   }
 
-  return doc(db, 'counselors', uid);
+  return doc(db, "counselors", uid);
 };
 
 const buildDisplayName = (salutation: string, fullName: string) =>
@@ -56,10 +69,16 @@ const buildDisplayName = (salutation: string, fullName: string) =>
 
 export async function createCounselorAccount(input: CounselorSignupInput) {
   if (!auth) {
-    throw new Error(getFirebaseConfigError() ?? 'Firebase Auth is unavailable.');
+    throw new Error(
+      getFirebaseConfigError() ?? "Firebase Auth is unavailable.",
+    );
   }
 
-  const credential = await createUserWithEmailAndPassword(auth, input.email, input.password);
+  const credential = await createUserWithEmailAndPassword(
+    auth,
+    input.email,
+    input.password,
+  );
   const displayName = buildDisplayName(input.salutation, input.fullName);
 
   await updateProfile(credential.user, { displayName });
@@ -70,11 +89,11 @@ export async function createCounselorAccount(input: CounselorSignupInput) {
     salutation: input.salutation,
     fullName: input.fullName,
     displayName,
-    specialty: '',
+    specialty: "",
     qualifications: [],
     researchStudies: [],
-    bio: '',
-    role: 'counselor',
+    bio: "",
+    role: "counselor",
     profileCompleted: false,
   };
 
@@ -89,7 +108,9 @@ export async function createCounselorAccount(input: CounselorSignupInput) {
 
 export async function signInCounselor(email: string, password: string) {
   if (!auth) {
-    throw new Error(getFirebaseConfigError() ?? 'Firebase Auth is unavailable.');
+    throw new Error(
+      getFirebaseConfigError() ?? "Firebase Auth is unavailable.",
+    );
   }
 
   const credential = await signInWithEmailAndPassword(auth, email, password);
@@ -99,23 +120,76 @@ export async function signInCounselor(email: string, password: string) {
     return existingProfile;
   }
 
-  const fallbackFullName = credential.user.displayName?.replace(/^(Mr|Mrs|Ms)\s+/i, '').trim() || '';
-  const fallbackSalutation = credential.user.displayName?.match(/^(Mr|Mrs|Ms)\b/i)?.[1] ?? 'Mr';
+  const fallbackFullName =
+    credential.user.displayName?.replace(/^(Mr|Mrs|Ms)\s+/i, "").trim() || "";
+  const fallbackSalutation =
+    credential.user.displayName?.match(/^(Mr|Mrs|Ms)\b/i)?.[1] ?? "Mr";
   const createdProfile: CounselorProfile = {
     uid: credential.user.uid,
     email: credential.user.email ?? email,
     salutation: fallbackSalutation,
     fullName: fallbackFullName,
-    displayName: credential.user.displayName ?? buildDisplayName(fallbackSalutation, fallbackFullName),
-    specialty: '',
+    displayName:
+      credential.user.displayName ??
+      buildDisplayName(fallbackSalutation, fallbackFullName),
+    specialty: "",
     qualifications: [],
     researchStudies: [],
-    bio: '',
-    role: 'counselor',
+    bio: "",
+    role: "counselor",
     profileCompleted: false,
   };
 
   await setDoc(counselorDocRef(credential.user.uid), {
+    ...createdProfile,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  return createdProfile;
+}
+
+export async function signInCounselorWithGoogle(
+  idToken?: string,
+  accessToken?: string,
+) {
+  if (!auth) {
+    throw new Error(
+      getFirebaseConfigError() ?? "Firebase Auth is unavailable.",
+    );
+  }
+
+  if (!idToken && !accessToken) {
+    throw new Error("Google sign-in did not return an identity token.");
+  }
+
+  const credential = GoogleAuthProvider.credential(
+    idToken ?? null,
+    accessToken,
+  );
+  const userCredential = await signInWithCredential(auth, credential);
+  const existingProfile = await getCounselorProfile(userCredential.user.uid);
+
+  if (existingProfile) {
+    return existingProfile;
+  }
+
+  const fallbackFullName = userCredential.user.displayName?.trim() || "";
+  const createdProfile: CounselorProfile = {
+    uid: userCredential.user.uid,
+    email: userCredential.user.email ?? "",
+    salutation: "Mr",
+    fullName: fallbackFullName,
+    displayName: fallbackFullName,
+    specialty: "",
+    qualifications: [],
+    researchStudies: [],
+    bio: "",
+    role: "counselor",
+    profileCompleted: false,
+  };
+
+  await setDoc(counselorDocRef(userCredential.user.uid), {
     ...createdProfile,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -133,9 +207,12 @@ export async function getCounselorProfile(uid: string) {
   return snapshot.data() as CounselorProfile;
 }
 
-export async function upsertCounselorProfile(uid: string, input: CounselorProfileUpdateInput) {
+export async function upsertCounselorProfile(
+  uid: string,
+  input: CounselorProfileUpdateInput,
+) {
   const existingProfile = await getCounselorProfile(uid);
-  const currentEmail = auth?.currentUser?.email ?? existingProfile?.email ?? '';
+  const currentEmail = auth?.currentUser?.email ?? existingProfile?.email ?? "";
   const displayName = buildDisplayName(input.salutation, input.fullName);
 
   await setDoc(
@@ -150,12 +227,12 @@ export async function upsertCounselorProfile(uid: string, input: CounselorProfil
       qualifications: input.qualifications,
       researchStudies: input.researchStudies,
       bio: input.bio,
-      role: 'counselor',
+      role: "counselor",
       profileCompleted: true,
       updatedAt: serverTimestamp(),
       createdAt: existingProfile?.createdAt ?? serverTimestamp(),
     },
-    { merge: true }
+    { merge: true },
   );
 
   if (auth?.currentUser) {
@@ -172,7 +249,7 @@ export async function upsertCounselorProfile(uid: string, input: CounselorProfil
     qualifications: input.qualifications,
     researchStudies: input.researchStudies,
     bio: input.bio,
-    role: 'counselor' as const,
+    role: "counselor" as const,
     profileCompleted: true,
   };
 }
@@ -182,6 +259,6 @@ export async function listCounselors() {
 
   return snapshot.docs
     .map((item) => item.data() as CounselorProfile)
-    .filter((item) => item.role === 'counselor' && item.profileCompleted)
+    .filter((item) => item.role === "counselor" && item.profileCompleted)
     .filter((item) => item.fullName.trim() && item.specialty.trim());
 }

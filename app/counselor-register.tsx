@@ -1,30 +1,44 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  createCounselorAccount,
+  signInCounselorWithGoogle,
+} from "@/lib/counselors";
+import { getFirebaseConfigError } from "@/lib/firebase";
+import { signInWithNativeGoogle } from "@/lib/native-google-signin";
 
-import { createCounselorAccount } from '@/lib/counselors';
-import { getFirebaseConfigError } from '@/lib/firebase';
-
-const SALUTATION_OPTIONS = ['Mr', 'Mrs', 'Ms'] as const;
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
+import { useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+const SALUTATION_OPTIONS = ["Mr", "Mrs", "Ms"] as const;
 
 export default function CounselorRegisterScreen() {
-  const [salutation, setSalutation] = useState<(typeof SALUTATION_OPTIONS)[number]>('Mr');
-  const [fullName, setFullName] = useState('');
-  const [emailAddress, setEmailAddress] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [salutation, setSalutation] =
+    useState<(typeof SALUTATION_OPTIONS)[number]>("Mr");
+  const [fullName, setFullName] = useState("");
+  const [emailAddress, setEmailAddress] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   const handleSelectSalutation = () => {
     void Haptics.selectionAsync();
     Alert.alert(
-      'Select Title',
-      'Choose your title',
+      "Select Title",
+      "Choose your title",
       [
         ...SALUTATION_OPTIONS.map((option) => ({
           text: option,
@@ -33,9 +47,9 @@ export default function CounselorRegisterScreen() {
             void Haptics.selectionAsync();
           },
         })),
-        { text: 'Cancel', style: 'cancel' as const },
+        { text: "Cancel", style: "cancel" as const },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -46,31 +60,43 @@ export default function CounselorRegisterScreen() {
     const firebaseConfigError = getFirebaseConfigError();
 
     if (firebaseConfigError) {
-      Alert.alert('Firebase Not Configured', firebaseConfigError);
+      Alert.alert("Firebase Not Configured", firebaseConfigError);
       return;
     }
 
-    if (!trimmedSalutation || !trimmedName || !trimmedEmail || !password || !confirmPassword) {
+    if (
+      !trimmedSalutation ||
+      !trimmedName ||
+      !trimmedEmail ||
+      !password ||
+      !confirmPassword
+    ) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Missing Details', 'Please fill all fields before signing up.');
+      Alert.alert(
+        "Missing Details",
+        "Please fill all fields before signing up.",
+      );
       return;
     }
 
-    if (!trimmedEmail.includes('@')) {
+    if (!trimmedEmail.includes("@")) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
 
     if (password.length < 8) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Weak Password', 'Password should be at least 8 characters.');
+      Alert.alert("Weak Password", "Password should be at least 8 characters.");
       return;
     }
 
     if (password !== confirmPassword) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Password Mismatch', 'Password and confirm password must match.');
+      Alert.alert(
+        "Password Mismatch",
+        "Password and confirm password must match.",
+      );
       return;
     }
 
@@ -84,22 +110,22 @@ export default function CounselorRegisterScreen() {
       });
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/(counselor-tabs)/profile');
+      router.replace("/(counselor-tabs)/profile");
     } catch (error) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
       const message =
         error instanceof Error && error.message
-          ? error.message.includes('auth/email-already-in-use')
-            ? 'That email is already registered.'
-            : error.message.includes('auth/invalid-email')
-              ? 'Please enter a valid email address.'
-              : error.message.includes('auth/network-request-failed')
-                ? 'Network error while contacting Firebase.'
+          ? error.message.includes("auth/email-already-in-use")
+            ? "That email is already registered."
+            : error.message.includes("auth/invalid-email")
+              ? "Please enter a valid email address."
+              : error.message.includes("auth/network-request-failed")
+                ? "Network error while contacting Firebase."
                 : error.message
-          : 'Unable to create your counselor account right now.';
+          : "Unable to create your counselor account right now.";
 
-      Alert.alert('Sign Up Failed', message);
+      Alert.alert("Sign Up Failed", message);
     } finally {
       setIsSubmitting(false);
     }
@@ -107,28 +133,86 @@ export default function CounselorRegisterScreen() {
 
   const handleSignIn = () => {
     void Haptics.selectionAsync();
-    router.push('/counselor-login');
+    router.push("/counselor-login");
   };
 
-  const handleGooglePress = () => {
+  const handleGooglePress = async () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert('Google Sign Up', 'Google account sign up will be available here soon.');
+
+    if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+      Alert.alert(
+        "Google Sign-Up Requires Dev Build",
+        "Expo Go cannot complete Google OAuth redirects. Build and run a development build, then try again.",
+      );
+      return;
+    }
+
+    const firebaseConfigError = getFirebaseConfigError();
+    if (firebaseConfigError) {
+      Alert.alert("Firebase Not Configured", firebaseConfigError);
+      return;
+    }
+
+    if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+      Alert.alert(
+        "Google Sign-Up",
+        "Google sign-up is not configured yet. Add Google client IDs to env vars.",
+      );
+      return;
+    }
+
+    try {
+      setIsGoogleSubmitting(true);
+      const tokens = await signInWithNativeGoogle();
+
+      if (!tokens) {
+        return;
+      }
+
+      const profile = await signInCounselorWithGoogle(
+        tokens.idToken,
+        tokens.accessToken,
+      );
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace(
+        profile.profileCompleted
+          ? "/(counselor-tabs)/overview"
+          : "/(counselor-tabs)/profile",
+      );
+    } catch (error) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Google Sign-Up Failed",
+        error instanceof Error && error.message
+          ? error.message
+          : "Unable to sign up with Google right now.",
+      );
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>join Mindcare and start your journey to wellness</Text>
+        <Text style={styles.subtitle}>
+          join Mindcare and start your journey to wellness
+        </Text>
         <Text style={styles.roleText}>I am a counselor</Text>
 
         <View style={styles.formPanel}>
           <ScrollView
             contentContainerStyle={styles.formContent}
             showsVerticalScrollIndicator={false}
-            bounces={false}>
+            bounces={false}
+          >
             <View style={styles.iconTile}>
-              <MaterialCommunityIcons name="stethoscope" size={43} color="#FFFFFF" />
+              <MaterialCommunityIcons
+                name="stethoscope"
+                size={43}
+                color="#FFFFFF"
+              />
             </View>
 
             <View style={styles.dividerWrap}>
@@ -138,7 +222,11 @@ export default function CounselorRegisterScreen() {
             </View>
 
             <Text style={styles.label}>Mr/ Mrs/ Ms</Text>
-            <TouchableOpacity style={styles.inputWrap} activeOpacity={0.85} onPress={handleSelectSalutation}>
+            <TouchableOpacity
+              style={styles.inputWrap}
+              activeOpacity={0.85}
+              onPress={handleSelectSalutation}
+            >
               <Feather name="user" size={18} color="#5D5D5D" />
               <Text style={styles.input}>{salutation}</Text>
               <Feather name="chevron-down" size={20} color="#8A8A8A" />
@@ -184,8 +272,15 @@ export default function CounselorRegisterScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <TouchableOpacity activeOpacity={0.85} onPress={() => setShowPassword((prev) => !prev)}>
-                <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color="#A3A3A3" />
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setShowPassword((prev) => !prev)}
+              >
+                <Feather
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={20}
+                  color="#A3A3A3"
+                />
               </TouchableOpacity>
             </View>
 
@@ -201,17 +296,30 @@ export default function CounselorRegisterScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <TouchableOpacity activeOpacity={0.85} onPress={() => setShowConfirmPassword((prev) => !prev)}>
-                <Feather name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color="#A3A3A3" />
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setShowConfirmPassword((prev) => !prev)}
+              >
+                <Feather
+                  name={showConfirmPassword ? "eye-off" : "eye"}
+                  size={20}
+                  color="#A3A3A3"
+                />
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={[styles.signUpButton, isSubmitting && styles.signUpButtonDisabled]}
+              style={[
+                styles.signUpButton,
+                isSubmitting && styles.signUpButtonDisabled,
+              ]}
               activeOpacity={0.9}
               onPress={() => void handleSignUp()}
-              disabled={isSubmitting}>
-              <Text style={styles.signUpText}>{isSubmitting ? 'Creating Account...' : 'Sign Up'}</Text>
+              disabled={isSubmitting}
+            >
+              <Text style={styles.signUpText}>
+                {isSubmitting ? "Creating Account..." : "Sign Up"}
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.signInRow}>
@@ -222,8 +330,8 @@ export default function CounselorRegisterScreen() {
             </View>
 
             <Text style={styles.termsText}>
-              By Signing up you agree to our Terms and Service and Privacy Policy.We ensure your data is encrypted and
-              secure
+              By Signing up you agree to our Terms and Service and Privacy
+              Policy.We ensure your data is encrypted and secure
             </Text>
 
             <View style={styles.bottomSocialWrap}>
@@ -233,9 +341,18 @@ export default function CounselorRegisterScreen() {
                 <View style={styles.bottomDividerLine} />
               </View>
 
-              <TouchableOpacity style={styles.socialButton} activeOpacity={0.85} onPress={handleGooglePress}>
+              <TouchableOpacity
+                style={styles.socialButton}
+                activeOpacity={0.85}
+                onPress={() => void handleGooglePress()}
+                disabled={isGoogleSubmitting}
+              >
                 <Ionicons name="logo-google" size={24} color="#000000" />
-                <Text style={styles.socialText}>Continue with Google</Text>
+                <Text style={styles.socialText}>
+                  {isGoogleSubmitting
+                    ? "Signing up..."
+                    : "Continue with Google"}
+                </Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -248,52 +365,52 @@ export default function CounselorRegisterScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#2F88E8',
+    backgroundColor: "#2F88E8",
   },
   container: {
     flex: 1,
-    backgroundColor: '#2F88E8',
+    backgroundColor: "#2F88E8",
   },
   title: {
     marginTop: 24,
-    textAlign: 'center',
-    fontFamily: 'Inter',
+    textAlign: "center",
+    fontFamily: "Inter",
     fontSize: 30,
     lineHeight: 36,
-    color: '#FFFFFF',
-    fontWeight: '800',
-    textShadowColor: 'rgba(0, 0, 0, 0.20)',
+    color: "#FFFFFF",
+    fontWeight: "800",
+    textShadowColor: "rgba(0, 0, 0, 0.20)",
     textShadowOffset: { width: 0, height: 4 },
     textShadowRadius: 4,
   },
   subtitle: {
     marginTop: 4,
-    textAlign: 'center',
-    fontFamily: 'Inter',
+    textAlign: "center",
+    fontFamily: "Inter",
     fontSize: 13,
     lineHeight: 18,
-    color: '#E8F1FD',
-    fontWeight: '500',
+    color: "#E8F1FD",
+    fontWeight: "500",
     paddingHorizontal: 24,
   },
   roleText: {
     marginTop: 20,
     marginBottom: 11,
-    textAlign: 'center',
-    fontFamily: 'Inter',
+    textAlign: "center",
+    fontFamily: "Inter",
     fontSize: 22,
     lineHeight: 28,
-    color: '#FFFFFF',
-    fontStyle: 'italic',
-    fontWeight: '700',
+    color: "#FFFFFF",
+    fontStyle: "italic",
+    fontWeight: "700",
   },
   formPanel: {
     flex: 1,
     borderTopLeftRadius: 64,
     borderTopRightRadius: 64,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     paddingTop: 15,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   formContent: {
     paddingHorizontal: 24,
@@ -304,100 +421,100 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 22,
-    backgroundColor: '#2F88E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
+    backgroundColor: "#2F88E8",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
     marginBottom: 12,
   },
   dividerWrap: {
     marginTop: 16,
     marginBottom: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#D6DCE6',
+    backgroundColor: "#D6DCE6",
   },
   dividerText: {
-    fontFamily: 'Inter',
+    fontFamily: "Inter",
     fontSize: 12,
     lineHeight: 16,
-    color: '#697386',
-    fontWeight: '600',
+    color: "#697386",
+    fontWeight: "600",
   },
   label: {
     marginTop: 8,
     marginBottom: 4,
-    fontFamily: 'Inter',
+    fontFamily: "Inter",
     fontSize: 12.5,
     lineHeight: 19,
-    color: '#161616',
-    fontWeight: '500',
+    color: "#161616",
+    fontWeight: "500",
   },
   inputWrap: {
     height: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   input: {
     flex: 1,
-    fontFamily: 'Inter',
+    fontFamily: "Inter",
     fontSize: 14,
     lineHeight: 24,
-    color: '#232323',
+    color: "#232323",
   },
   signUpButton: {
     marginTop: 12,
     height: 45,
     borderRadius: 14,
-    backgroundColor: '#2F88E8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#2F88E8",
+    justifyContent: "center",
+    alignItems: "center",
   },
   signUpButtonDisabled: {
     opacity: 0.7,
   },
   signUpText: {
-    fontFamily: 'Inter',
+    fontFamily: "Inter",
     fontSize: 18,
     lineHeight: 28,
-    color: '#FFFFFF',
-    fontWeight: '800',
+    color: "#FFFFFF",
+    fontWeight: "800",
   },
   signInRow: {
     marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: 8,
   },
   signInPrompt: {
-    fontFamily: 'Inter',
+    fontFamily: "Inter",
     fontSize: 12,
     lineHeight: 19,
-    color: '#3D3D3D',
-    fontWeight: '600',
+    color: "#3D3D3D",
+    fontWeight: "600",
   },
   signInLink: {
-    fontFamily: 'Inter',
+    fontFamily: "Inter",
     fontSize: 12,
     lineHeight: 19,
-    color: '#0F8AF1',
-    fontWeight: '700',
+    color: "#0F8AF1",
+    fontWeight: "700",
   },
   termsText: {
     marginTop: 4,
-    textAlign: 'center',
-    fontFamily: 'Inter',
+    textAlign: "center",
+    fontFamily: "Inter",
     fontSize: 10,
     lineHeight: 15,
-    color: '#7E7E7E',
-    fontWeight: '500',
+    color: "#7E7E7E",
+    fontWeight: "500",
     paddingHorizontal: 8,
   },
   bottomSocialWrap: {
@@ -405,38 +522,38 @@ const styles = StyleSheet.create({
   },
   bottomDividerWrap: {
     marginBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   bottomDividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#B4BBC7',
+    backgroundColor: "#B4BBC7",
   },
   bottomDividerText: {
-    fontFamily: 'Inter',
+    fontFamily: "Inter",
     fontSize: 18,
     lineHeight: 15,
-    color: '#4F5971',
-    fontWeight: '500',
+    color: "#4F5971",
+    fontWeight: "500",
   },
   socialButton: {
     height: 45,
     borderRadius: 31,
     borderWidth: 1,
-    borderColor: '#B3BAC7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
+    borderColor: "#B3BAC7",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
     gap: 12,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: "#F7F8FA",
   },
   socialText: {
-    fontFamily: 'Inter',
-    color: '#111111',
+    fontFamily: "Inter",
+    color: "#111111",
     fontSize: 15,
     lineHeight: 23,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

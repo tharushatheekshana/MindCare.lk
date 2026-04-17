@@ -1,4 +1,7 @@
+import { signInMember, signInMemberWithGoogle } from "@/lib/members";
+import { signInWithNativeGoogle } from "@/lib/native-google-signin";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -11,12 +14,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { signInMember } from '@/lib/members';
 
 export default function LoginScreen() {
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const canSignIn =
     emailAddress.trim().length > 4 && password.trim().length >= 8;
 
@@ -34,18 +37,59 @@ export default function LoginScreen() {
     try {
       await signInMember(emailAddress.trim().toLowerCase(), password);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/(main-tabs)/profile');
+      router.replace("/(main-tabs)/profile");
     } catch (error) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
-        'Sign In Failed',
-        error instanceof Error && error.message ? error.message : 'Unable to sign in right now.'
+        "Sign In Failed",
+        error instanceof Error && error.message
+          ? error.message
+          : "Unable to sign in right now.",
       );
     }
   };
 
-  const handleSocialPress = () => {
+  const handleGooglePress = async () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+      Alert.alert(
+        "Google Sign-In Requires Dev Build",
+        "Expo Go cannot complete Google OAuth redirects. Build and run a development build, then try again.",
+      );
+      return;
+    }
+
+    if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+      Alert.alert(
+        "Google Sign-In",
+        "Google sign-in is not configured yet. Add Google client IDs to env vars.",
+      );
+      return;
+    }
+
+    try {
+      setIsGoogleSubmitting(true);
+      const tokens = await signInWithNativeGoogle();
+
+      if (!tokens) {
+        return;
+      }
+
+      await signInMemberWithGoogle(tokens.idToken, tokens.accessToken);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/(main-tabs)/profile");
+    } catch (error) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Google Sign-In Failed",
+        error instanceof Error && error.message
+          ? error.message
+          : "Unable to sign in with Google right now.",
+      );
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
   };
 
   const handleCreateFree = () => {
@@ -139,10 +183,13 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={styles.socialButton}
             activeOpacity={0.85}
-            onPress={handleSocialPress}
+            onPress={() => void handleGooglePress()}
+            disabled={isGoogleSubmitting}
           >
             <Ionicons name="logo-google" size={24} color="#000000" />
-            <Text style={styles.socialText}>Continue with Google</Text>
+            <Text style={styles.socialText}>
+              {isGoogleSubmitting ? "Signing in..." : "Continue with Google"}
+            </Text>
           </TouchableOpacity>
 
           <View style={styles.bottomRow}>

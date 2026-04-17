@@ -1,8 +1,12 @@
-import { createAsyncStorage } from '@react-native-async-storage/async-storage';
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import * as FirebaseAuth from 'firebase/auth';
-import { Auth, Persistence } from 'firebase/auth';
-import { Firestore, getFirestore } from 'firebase/firestore';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import {
+  getAuth,
+  getReactNativePersistence,
+  initializeAuth,
+  type Auth,
+} from "firebase/auth";
+import { Firestore, getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -19,23 +23,22 @@ const missingFirebaseKeys = Object.entries(firebaseConfig)
 
 const hasFirebaseConfig = missingFirebaseKeys.length === 0;
 
-const firebaseApp = hasFirebaseConfig ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
+const firebaseApp = hasFirebaseConfig
+  ? getApps().length
+    ? getApp()
+    : initializeApp(firebaseConfig)
+  : null;
 
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 
-const reactNativeAuth = FirebaseAuth as typeof FirebaseAuth & {
-  initializeAuth: (app: ReturnType<typeof initializeApp>, deps?: { persistence?: Persistence }) => Auth;
-  getReactNativePersistence: (storage: ReturnType<typeof createAsyncStorage>) => Persistence;
-};
-
 if (firebaseApp) {
-  const persistence = reactNativeAuth.getReactNativePersistence(createAsyncStorage('mindcare-auth'));
-
   try {
-    auth = reactNativeAuth.initializeAuth(firebaseApp, { persistence });
+    auth = initializeAuth(firebaseApp, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
   } catch {
-    auth = FirebaseAuth.getAuth(firebaseApp);
+    auth = getAuth(firebaseApp);
   }
 
   db = getFirestore(firebaseApp);
@@ -46,4 +49,4 @@ export { auth, db, firebaseApp, hasFirebaseConfig };
 export const getFirebaseConfigError = () =>
   hasFirebaseConfig
     ? null
-    : `Firebase is not configured. Add these Expo env vars: ${missingFirebaseKeys.join(', ')}`;
+    : `Firebase is not configured. Add these Expo env vars: ${missingFirebaseKeys.join(", ")}`;
